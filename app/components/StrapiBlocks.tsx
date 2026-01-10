@@ -1,119 +1,107 @@
-type InlineNode = {
-  type?: string;
-  text?: string;
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  strikethrough?: boolean;
-  code?: boolean;
-  url?: string;
-  children?: InlineNode[];
-};
+import type React from "react";
 
-type BlockNode = {
-  type: string;
-  level?: number;
-  format?: "ordered" | "unordered";
-  children?: (BlockNode | InlineNode)[];
-};
+type InlineNode =
+  | { type: "text"; text: string }
+  | { type: "link"; url?: string; children?: InlineNode[] }
+  | { type: string; [key: string]: any };
 
-function renderInline(node: InlineNode, key: number): JSX.Element {
+type BlockNode =
+  | { type: "paragraph"; children?: InlineNode[] }
+  | { type: "heading"; level?: number; children?: InlineNode[] }
+  | { type: "quote"; children?: InlineNode[] }
+  | { type: "list"; format?: "ordered" | "unordered"; children?: any[] }
+  | { type: "list-item"; children?: InlineNode[] }
+  | { type: string; [key: string]: any };
+
+function renderInline(node: InlineNode, key: number): React.ReactNode {
+  if (node.type === "text") return node.text;
+
   if (node.type === "link") {
     const href = node.url ?? "#";
     return (
       <a
         key={key}
         href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="underline underline-offset-4 decoration-zinc-500 hover:decoration-zinc-200"
+        className="underline underline-offset-4 decoration-zinc-600 hover:decoration-zinc-200"
+        target={href.startsWith("http") ? "_blank" : undefined}
+        rel={href.startsWith("http") ? "noreferrer" : undefined}
       >
-        {node.children?.map((c, i) => renderInline(c, i))}
+        {(node.children ?? []).map((c, i) => renderInline(c, i))}
       </a>
     );
   }
 
-  const raw = node.text ?? "";
-  let el: JSX.Element = <span key={key}>{raw}</span>;
-
-  if (node.code) el = <code key={key} className="rounded bg-zinc-900/70 px-1 py-0.5 text-sm">{raw}</code>;
-  if (node.bold) el = <strong key={key}>{el}</strong>;
-  if (node.italic) el = <em key={key}>{el}</em>;
-  if (node.underline) el = <u key={key}>{el}</u>;
-  if (node.strikethrough) el = <s key={key}>{el}</s>;
-
-  return el;
-}
-
-function renderChildren(children: any[] | undefined): JSX.Element[] {
-  if (!Array.isArray(children)) return [];
-  return children.map((child, idx) => {
-    if (child && typeof child === "object" && typeof child.type === "string" && !("text" in child)) {
-      return <span key={idx}>{renderBlock(child as BlockNode, idx)}</span>;
-    }
-    return renderInline(child as InlineNode, idx);
-  });
-}
-
-function renderBlock(block: BlockNode, key: number): JSX.Element | null {
-  const children = renderChildren(block.children as any[]);
-
-  switch (block.type) {
-    case "paragraph":
-      return <p key={key} className="my-4 text-zinc-200">{children}</p>;
-
-    case "heading": {
-      const level = block.level ?? 2;
-      if (level === 1) return <h1 key={key} className="mt-10 mb-4 text-3xl font-semibold">{children}</h1>;
-      if (level === 2) return <h2 key={key} className="mt-10 mb-3 text-2xl font-semibold">{children}</h2>;
-      if (level === 3) return <h3 key={key} className="mt-8 mb-3 text-xl font-semibold">{children}</h3>;
-      return <h4 key={key} className="mt-6 mb-2 text-lg font-semibold">{children}</h4>;
-    }
-
-    case "quote":
-      return (
-        <blockquote key={key} className="my-6 border-l-2 border-zinc-700 pl-4 text-zinc-200 italic">
-          {children}
-        </blockquote>
-      );
-
-    case "list": {
-      const format = block.format ?? "unordered";
-      const items = (block.children ?? []).filter(Boolean) as any[];
-
-      if (format === "ordered") {
-        return (
-          <ol key={key} className="my-4 list-decimal space-y-2 pl-6 text-zinc-200">
-            {items.map((it, i) => renderBlock(it as BlockNode, i))}
-          </ol>
-        );
-      }
-
-      return (
-        <ul key={key} className="my-4 list-disc space-y-2 pl-6 text-zinc-200">
-          {items.map((it, i) => renderBlock(it as BlockNode, i))}
-        </ul>
-      );
-    }
-
-    case "list-item":
-      return <li key={key}>{children}</li>;
-
-    case "hr":
-      return <hr key={key} className="my-8 border-zinc-800" />;
-
-    default:
-      if (children.length > 0) return <div key={key}>{children}</div>;
-      return null;
+  // fallback
+  if (Array.isArray((node as any).children)) {
+    return (node as any).children.map((c: InlineNode, i: number) => (
+      <span key={i}>{renderInline(c, i)}</span>
+    ));
   }
+
+  return null;
 }
 
-export default function StrapiBlocks({ blocks }: { blocks: BlockNode[] }) {
-  if (!Array.isArray(blocks)) return null;
+function renderParagraph(children?: InlineNode[]) {
+  return <p className="mt-4 text-zinc-200 leading-7">{(children ?? []).map(renderInline)}</p>;
+}
+
+function renderHeading(level: number, children?: InlineNode[]) {
+  const text = <>{(children ?? []).map(renderInline)}</>;
+  if (level <= 2) return <h2 className="mt-8 text-2xl font-semibold">{text}</h2>;
+  if (level === 3) return <h3 className="mt-6 text-xl font-semibold">{text}</h3>;
+  return <h4 className="mt-6 text-lg font-semibold">{text}</h4>;
+}
+
+function renderList(block: any) {
+  const items = Array.isArray(block.children) ? block.children : [];
+  const isOrdered = block.format === "ordered";
+
+  const ListTag = isOrdered ? "ol" : "ul";
+  return (
+    <ListTag className={`mt-4 pl-6 ${isOrdered ? "list-decimal" : "list-disc"}`}>
+      {items.map((it: any, idx: number) => (
+        <li key={idx} className="mt-2 text-zinc-200 leading-7">
+          {(it?.children ?? []).map(renderInline)}
+        </li>
+      ))}
+    </ListTag>
+  );
+}
+
+export default function StrapiBlocks({ blocks }: { blocks: any }) {
+  const arr: BlockNode[] = Array.isArray(blocks) ? blocks : [];
 
   return (
-    <div className="text-[16px] leading-7">
-      {blocks.map((block, i) => renderBlock(block, i))}
+    <div>
+      {arr.map((b, idx) => {
+        if (!b || typeof b !== "object") return null;
+
+        if (b.type === "paragraph") {
+          return <div key={idx}>{renderParagraph(b.children)}</div>;
+        }
+
+        if (b.type === "heading") {
+          return <div key={idx}>{renderHeading(b.level ?? 2, b.children)}</div>;
+        }
+
+        if (b.type === "quote") {
+          return (
+            <blockquote
+              key={idx}
+              className="mt-6 border-l-2 border-zinc-700 pl-4 text-zinc-200 italic"
+            >
+              {(b.children ?? []).map(renderInline)}
+            </blockquote>
+          );
+        }
+
+        if (b.type === "list") {
+          return <div key={idx}>{renderList(b)}</div>;
+        }
+
+        // unknown block -> ignore safely
+        return null;
+      })}
     </div>
   );
 }
