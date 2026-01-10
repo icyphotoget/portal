@@ -1,18 +1,19 @@
 export default ({ env }) => ({
   upload: {
     config: {
-      provider: '@strapi/provider-upload-aws-s3',
+      provider: "aws-s3",
       providerOptions: {
         s3Options: {
-          region: 'auto',
-          endpoint: env('R2_ENDPOINT'),
+          region: env("AWS_REGION"),
           credentials: {
-            accessKeyId: env('R2_ACCESS_KEY_ID'),
-            secretAccessKey: env('R2_SECRET_ACCESS_KEY'),
+            accessKeyId: env("AWS_ACCESS_KEY_ID"),
+            secretAccessKey: env("AWS_ACCESS_SECRET"),
           },
+          endpoint: env("AWS_ENDPOINT"), // opcionalno (R2/Spaces)
+          forcePathStyle: env.bool("AWS_FORCE_PATH_STYLE", false), // često true za R2/minio
         },
         params: {
-          Bucket: env('R2_BUCKET'),
+          Bucket: env("AWS_BUCKET"),
         },
       },
     },
