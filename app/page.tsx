@@ -79,8 +79,10 @@ function estimateReadTime(text: string) {
 }
 
 function getArticleCategory(a: any): Category | null {
+  // Strapi v5: category object directly
   if (a?.category && typeof a.category === "object") return a.category as Category;
 
+  // v4 fallback: category.data.attributes
   const v4 = a?.category?.data?.attributes;
   if (v4?.name && v4?.slug) return { id: a.category.data.id ?? 0, ...v4 } as Category;
 
@@ -100,7 +102,7 @@ async function fetchHomeData(baseUrl: string) {
   const articlesUrl =
     `${baseUrl}/api/articles?sort=publishedAt:desc` +
     `&populate=coverImage&populate=category` +
-    `&pagination[pageSize]=18`;
+    `&pagination[pageSize]=24`;
 
   const categoriesUrl =
     `${baseUrl}/api/categories?sort=name:asc&pagination[pageSize]=50`;
@@ -110,23 +112,38 @@ async function fetchHomeData(baseUrl: string) {
     fetchJson<{ data: Category[] }>(categoriesUrl),
   ]);
 
-  const articles = (articlesJson.data ?? []).filter(Boolean);
-  const categories = (categoriesJson.data ?? []).filter(Boolean);
-
-  return { articles, categories };
+  return {
+    articles: (articlesJson.data ?? []).filter(Boolean),
+    categories: (categoriesJson.data ?? []).filter(Boolean),
+  };
 }
 
-/* -------------------- UI bits -------------------- */
+/* ---------------- UI primitives ---------------- */
 
-function Chip({
+function GlowBg() {
+  return (
+    <>
+      <div className="pointer-events-none absolute -left-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-white/6 blur-3xl" />
+      <div className="pointer-events-none absolute -right-48 -bottom-56 h-[32rem] w-[32rem] rounded-full bg-white/5 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.10),transparent_55%)]" />
+    </>
+  );
+}
+
+function Pill({
   children,
   href,
+  variant = "soft",
 }: {
   children: React.ReactNode;
   href?: string;
+  variant?: "soft" | "solid";
 }) {
   const cls =
-    "inline-flex items-center rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-xs text-zinc-100 backdrop-blur hover:bg-zinc-900";
+    variant === "solid"
+      ? "inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-950 hover:bg-zinc-100"
+      : "inline-flex items-center rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-xs text-zinc-100 backdrop-blur hover:bg-zinc-900";
+
   return href ? (
     <Link href={href} className={cls}>
       {children}
@@ -136,12 +153,27 @@ function Chip({
   );
 }
 
-function SoftGlow() {
+function SectionHeader({
+  title,
+  subtitle,
+  href,
+}: {
+  title: string;
+  subtitle?: string;
+  href?: string;
+}) {
   return (
-    <>
-      <div className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-48 -right-48 h-[28rem] w-[28rem] rounded-full bg-white/5 blur-3xl" />
-    </>
+    <div className="flex items-end justify-between gap-4">
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        {subtitle ? <p className="mt-1 text-sm text-zinc-400">{subtitle}</p> : null}
+      </div>
+      {href ? (
+        <Link href={href} className="text-sm text-zinc-300 hover:text-zinc-100">
+          View all →
+        </Link>
+      ) : null}
+    </div>
   );
 }
 
@@ -160,19 +192,22 @@ function CategoryBadge({ cat }: { cat: Category | null }) {
 function Cover({
   title,
   coverUrl,
-  cat,
   metaLine,
-  variant,
+  cat,
+  aspect,
+  priority,
 }: {
   title: string;
   coverUrl: string | null;
-  cat: Category | null;
   metaLine: string;
-  variant: "featured" | "card";
+  cat: Category | null;
+  aspect: "hero" | "card";
+  priority?: boolean;
 }) {
-  const aspect = variant === "featured" ? "aspect-[16/9]" : "aspect-[16/10]";
+  const aspectCls = aspect === "hero" ? "aspect-[16/9]" : "aspect-[16/10]";
+
   return (
-    <div className={`relative w-full ${aspect} overflow-hidden bg-zinc-900`}>
+    <div className={`relative w-full ${aspectCls} overflow-hidden bg-zinc-900`}>
       <CategoryBadge cat={cat} />
 
       {coverUrl ? (
@@ -180,19 +215,21 @@ function Cover({
           src={coverUrl}
           alt={title}
           fill
-          sizes={variant === "featured" ? "(max-width: 1024px) 100vw, 60vw" : "(max-width: 1024px) 100vw, 33vw"}
+          unoptimized
+          priority={priority}
+          sizes={aspect === "hero" ? "(max-width: 1024px) 100vw, 60vw" : "(max-width: 1024px) 100vw, 33vw"}
           className="object-cover opacity-95 transition duration-300 group-hover:opacity-100 group-hover:scale-[1.02]"
-          priority={variant === "featured"}
         />
       ) : (
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900" />
-          <SoftGlow />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.08),transparent_55%)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/75 via-zinc-950/10 to-transparent" />
+          <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+          <div className="absolute -bottom-28 -right-28 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255,255,255,0.10),transparent_55%)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/10 to-transparent" />
 
           <div className="relative flex h-full flex-col justify-end p-4">
-            {cat ? <Chip href={`/category/${cat.slug}`}>{cat.name}</Chip> : null}
+            {cat ? <Pill href={`/category/${cat.slug}`}>{cat.name}</Pill> : null}
             <div className="mt-2 line-clamp-2 text-lg font-semibold text-zinc-100">
               {title}
             </div>
@@ -206,63 +243,89 @@ function Cover({
   );
 }
 
+function CardShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className={[
+        "group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/22 transition transform-gpu",
+        "hover:bg-zinc-900/55 hover:border-zinc-700 hover:-translate-y-0.5",
+        "hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_30px_80px_rgba(0,0,0,0.55)]",
+      ].join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
 function ArticleCard({
   a,
   variant = "card",
 }: {
   a: Article;
-  variant?: "card" | "featured" | "compact";
+  variant?: "hero" | "card" | "compact";
 }) {
   const coverUrl = firstCoverUrl(a);
-  const date = formatDate(a.publishedAt);
   const cat = getArticleCategory(a);
+  const date = formatDate(a.publishedAt);
   const readTime = estimateReadTime((a.excerpt ?? "") || a.title);
   const meta = [date, readTime].filter(Boolean).join(" · ");
 
-  const base =
-    "group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/25 transition transform-gpu " +
-    "hover:bg-zinc-900/55 hover:border-zinc-700 hover:-translate-y-0.5 " +
-    "hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_30px_80px_rgba(0,0,0,0.55)]";
-
   if (variant === "compact") {
     return (
-      <Link href={`/news/${a.slug}`} className={`${base} p-4`}>
-        <div className="flex items-start gap-3">
-          <div className="min-w-0">
-            <div className="text-xs text-zinc-400">{meta}</div>
-            <div className="mt-1 line-clamp-2 text-base font-semibold">{a.title}</div>
-            <div className="mt-2 text-sm text-zinc-300/90">
-              <span className="opacity-90 group-hover:opacity-100">Open</span>{" "}
-              <span className="inline-block translate-x-0 transition group-hover:translate-x-1">→</span>
+      <Link href={`/news/${a.slug}`}>
+        <CardShell>
+          <div className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs text-zinc-400">{meta}</div>
+                <div className="mt-1 line-clamp-2 text-base font-semibold leading-snug">
+                  {a.title}
+                </div>
+              </div>
+              <span className="shrink-0 text-zinc-500 transition group-hover:translate-x-0.5">
+                →
+              </span>
             </div>
           </div>
-        </div>
+        </CardShell>
       </Link>
     );
   }
 
-  const titleClass =
-    variant === "featured"
+  const titleCls =
+    variant === "hero"
       ? "mt-2 line-clamp-2 text-2xl font-semibold leading-snug"
       : "mt-2 line-clamp-2 text-lg font-semibold leading-snug";
 
+  const pad = variant === "hero" ? "p-6" : "p-4";
+
   return (
-    <Link href={`/news/${a.slug}`} className={base}>
-      <Cover title={a.title} coverUrl={coverUrl} cat={cat} metaLine={meta} variant={variant === "featured" ? "featured" : "card"} />
+    <Link href={`/news/${a.slug}`}>
+      <CardShell>
+        <Cover
+          title={a.title}
+          coverUrl={coverUrl}
+          metaLine={meta}
+          cat={cat}
+          aspect={variant === "hero" ? "hero" : "card"}
+          priority={variant === "hero"}
+        />
+        <div className={pad}>
+          <div className="text-xs text-zinc-400">{meta}</div>
+          <div className={titleCls}>{a.title}</div>
 
-      <div className={variant === "featured" ? "p-6" : "p-4"}>
-        <div className="text-xs text-zinc-400">{meta}</div>
-        <div className={titleClass}>{a.title}</div>
+          <p className="mt-2 line-clamp-3 text-sm text-zinc-300">
+            {a.excerpt ? a.excerpt : "Open to read the full story."}
+          </p>
 
-        <p className="mt-2 line-clamp-3 text-sm text-zinc-300">
-          {a.excerpt ? a.excerpt : "Tap to read the full story."}
-        </p>
-
-        <div className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-200/90">
-          <span className="opacity-90 group-hover:opacity-100">Open</span>
-          <span className="inline-block translate-x-0 transition group-hover:translate-x-1">→</span>
+          <div className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-200/90">
+            <span className="opacity-90 group-hover:opacity-100">Open</span>
+            <span className="inline-block translate-x-0 transition group-hover:translate-x-1">
+              →
+            </span>
+          </div>
         </div>
-      </div>
+      </CardShell>
     </Link>
   );
 }
@@ -278,33 +341,7 @@ function CategoryPill({ cat }: { cat: Category }) {
   );
 }
 
-function SectionHeader({
-  title,
-  subtitle,
-  href,
-  hrefLabel,
-}: {
-  title: string;
-  subtitle?: string;
-  href?: string;
-  hrefLabel?: string;
-}) {
-  return (
-    <div className="flex items-end justify-between gap-4">
-      <div>
-        <h2 className="text-xl font-semibold">{title}</h2>
-        {subtitle ? <p className="mt-1 text-sm text-zinc-400">{subtitle}</p> : null}
-      </div>
-      {href ? (
-        <Link href={href} className="text-sm text-zinc-300 hover:text-zinc-100">
-          {hrefLabel ?? "View all"} →
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-/* -------------------- Page -------------------- */
+/* ---------------- Page ---------------- */
 
 export default async function HomePage() {
   const baseUrl = process.env.NEXT_PUBLIC_STRAPI_URL;
@@ -316,7 +353,7 @@ export default async function HomePage() {
           <p className="text-zinc-300">
             Missing{" "}
             <code className="rounded bg-zinc-900 px-1">NEXT_PUBLIC_STRAPI_URL</code>{" "}
-            in environment variables.
+            in env vars.
           </p>
         </div>
       </main>
@@ -334,7 +371,7 @@ export default async function HomePage() {
     return (
       <main className="min-h-screen bg-zinc-950 text-zinc-100">
         <div className="mx-auto max-w-6xl px-4 py-10">
-          <h1 className="text-3xl font-semibold tracking-tight">Crypto Portal</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">FullPort</h1>
           <p className="mt-2 text-zinc-300">Failed to load homepage data.</p>
           <pre className="mt-4 whitespace-pre-wrap rounded-xl bg-zinc-900/60 p-4 text-xs text-zinc-200">
             {String(e?.message ?? e)}
@@ -345,20 +382,23 @@ export default async function HomePage() {
   }
 
   const featured = articles[0] ?? null;
-  const topStories = articles.slice(featured ? 1 : 0, (featured ? 1 : 0) + 2);
-  const trending = articles.slice((featured ? 1 : 0) + 2, (featured ? 1 : 0) + 8);
-  const latest = articles.slice((featured ? 1 : 0) + 8, (featured ? 1 : 0) + 14);
+  const top = articles.slice(featured ? 1 : 0, (featured ? 1 : 0) + 2);
+  const trending = articles.slice((featured ? 1 : 0) + 2, (featured ? 1 : 0) + 10);
+  const latest = articles.slice((featured ? 1 : 0) + 10, (featured ? 1 : 0) + 19);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto max-w-6xl px-4 py-10">
-        {/* Top nav */}
+        {/* NAV */}
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-sm text-zinc-300 hover:text-zinc-100">
-            Crypto Portal
+          <Link href="/" className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm">
+              FP
+            </span>
+            <span className="text-sm font-medium text-zinc-200">FullPort</span>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Link
               href="/news"
               className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
@@ -368,24 +408,30 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* HERO */}
-        <div className="relative mt-8 overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/25 p-8 shadow-[0_0_120px_rgba(255,255,255,0.06)]">
-          <SoftGlow />
+        {/* HERO SUPER CARD */}
+        <div className="relative mt-8 overflow-hidden rounded-[2rem] border border-zinc-800 bg-zinc-900/20 p-8 shadow-[0_0_140px_rgba(255,255,255,0.07)]">
+          <GlowBg />
 
-          <div className="relative grid gap-6 lg:grid-cols-12 lg:items-start">
+          <div className="relative grid gap-8 lg:grid-cols-12 lg:items-start">
+            {/* Left copy */}
             <div className="lg:col-span-5">
-              <Chip>⚡ Fast</Chip>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-                Crypto Portal
+              <div className="flex flex-wrap gap-2">
+                <Pill>⚡ Live</Pill>
+                <Pill>🧠 Narratives</Pill>
+                <Pill>📰 Newsroom</Pill>
+              </div>
+
+              <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
+                FullPort
               </h1>
               <p className="mt-3 text-zinc-300">
-                Real-time crypto news, memecoins, and narratives — powered by Next.js + Strapi.
+                Modern crypto news & memecoin culture — curated fast, shipped clean.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/news"
-                  className="rounded-xl bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-white"
+                  className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-zinc-100"
                 >
                   Browse Latest
                 </Link>
@@ -397,19 +443,36 @@ export default async function HomePage() {
                 </Link>
               </div>
 
-              {/* Categories quick pills */}
+              {/* Category pills */}
               {categories.length ? (
-                <div className="mt-6">
+                <div className="mt-7">
                   <div className="text-xs text-zinc-500">Browse topics</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {categories.slice(0, 10).map((c) => (
+                    {categories.slice(0, 12).map((c) => (
                       <CategoryPill key={c.id} cat={c} />
                     ))}
                   </div>
                 </div>
               ) : null}
+
+              {/* Mini stats strip */}
+              <div className="mt-8 grid grid-cols-3 gap-3">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/25 p-4">
+                  <div className="text-xs text-zinc-500">Updates</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-100">Daily</div>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/25 p-4">
+                  <div className="text-xs text-zinc-500">Latency</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-100">Fast</div>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/25 p-4">
+                  <div className="text-xs text-zinc-500">Focus</div>
+                  <div className="mt-1 text-lg font-semibold text-zinc-100">Web3</div>
+                </div>
+              </div>
             </div>
 
+            {/* Right content */}
             <div className="lg:col-span-7">
               <div className="mb-3 flex items-center gap-2 text-xs text-zinc-400">
                 <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-zinc-100">
@@ -418,11 +481,11 @@ export default async function HomePage() {
                 <span className="text-zinc-500">Fresh from Strapi</span>
               </div>
 
-              {featured ? <ArticleCard a={featured} variant="featured" /> : null}
+              {featured ? <ArticleCard a={featured} variant="hero" /> : null}
 
-              {topStories.length ? (
+              {top.length ? (
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {topStories.map((a) => (
+                  {top.map((a) => (
                     <ArticleCard key={a.id} a={a} variant="compact" />
                   ))}
                 </div>
@@ -436,14 +499,13 @@ export default async function HomePage() {
           <section className="mt-10">
             <SectionHeader
               title="Trending"
-              subtitle="Quick picks people are clicking right now."
+              subtitle="Fast picks people are clicking right now."
               href="/news"
-              hrefLabel="All news"
             />
 
             <div className="mt-5 flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {trending.map((a) => (
-                <div key={a.id} className="min-w-[280px] max-w-[280px]">
+                <div key={a.id} className="min-w-[290px] max-w-[290px]">
                   <ArticleCard a={a} />
                 </div>
               ))}
@@ -453,7 +515,11 @@ export default async function HomePage() {
 
         {/* LATEST */}
         <section className="mt-12">
-          <SectionHeader title="Latest" subtitle="Fresh drops from the CMS." href="/news" />
+          <SectionHeader
+            title="Latest"
+            subtitle="Newest drops from the newsroom."
+            href="/news"
+          />
 
           {latest.length === 0 ? (
             <p className="mt-6 text-zinc-300">No published articles yet.</p>
@@ -466,19 +532,23 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* Footer */}
+        {/* FOOTER */}
         <footer className="mt-16 border-t border-zinc-800 pt-8 text-sm text-zinc-400">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-zinc-200">Crypto Portal</div>
-              <div className="mt-1">Independent crypto news & insights.</div>
+              <div className="text-zinc-200">FullPort</div>
+              <div className="mt-1">Independent crypto news & narratives.</div>
             </div>
             <div className="flex gap-4">
-              <Link href="/news" className="hover:text-zinc-200">News</Link>
-              <Link href="/sitemap.xml" className="hover:text-zinc-200">Sitemap</Link>
+              <Link href="/news" className="hover:text-zinc-200">
+                News
+              </Link>
+              <Link href="/sitemap.xml" className="hover:text-zinc-200">
+                Sitemap
+              </Link>
             </div>
           </div>
-          <div className="mt-6 text-xs">© {new Date().getFullYear()}</div>
+          <div className="mt-6 text-xs">© {new Date().getFullYear()} FullPort</div>
         </footer>
       </div>
     </main>
