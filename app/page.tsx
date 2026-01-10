@@ -1,6 +1,7 @@
 // app/page.tsx
-import Image from "next/image";
+import path from "path";
 import Link from "next/link";
+import FeaturedCarousel, { type FeaturedItem } from "./components/FeaturedCarousel";
 
 type StrapiMedia = any;
 
@@ -31,10 +32,7 @@ function absolutizeStrapiUrl(maybeRelativeUrl: string | null | undefined) {
   if (!base) return maybeRelativeUrl;
 
   const cleanBase = base.replace(/\/+$/, "");
-  const cleanPath = maybeRelativeUrl.startsWith("/")
-    ? maybeRelativeUrl
-    : `/${maybeRelativeUrl}`;
-
+  const cleanPath = maybeRelativeUrl.startsWith("/") ? maybeRelativeUrl : `/${maybeRelativeUrl}`;
   return `${cleanBase}${cleanPath}`;
 }
 
@@ -73,16 +71,14 @@ function formatDate(iso: string | null) {
 }
 
 function estimateReadTime(text: string) {
-  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const words = (text ?? "").trim().split(/\s+/).filter(Boolean).length;
   const minutes = Math.max(1, Math.round(words / 200));
   return `${minutes} min read`;
 }
 
 function getArticleCategory(a: any): Category | null {
-  // Strapi v5: category object directly
   if (a?.category && typeof a.category === "object") return a.category as Category;
 
-  // v4 fallback: category.data.attributes
   const v4 = a?.category?.data?.attributes;
   if (v4?.name && v4?.slug) return { id: a.category.data.id ?? 0, ...v4 } as Category;
 
@@ -102,7 +98,7 @@ async function fetchHomeData(baseUrl: string) {
   const articlesUrl =
     `${baseUrl}/api/articles?sort=publishedAt:desc` +
     `&populate=coverImage&populate=category` +
-    `&pagination[pageSize]=24`;
+    `&pagination[pageSize]=30`;
 
   const categoriesUrl =
     `${baseUrl}/api/categories?sort=name:asc&pagination[pageSize]=50`;
@@ -118,217 +114,7 @@ async function fetchHomeData(baseUrl: string) {
   };
 }
 
-/* ---------------- UI primitives ---------------- */
-
-function GlowBg() {
-  return (
-    <>
-      <div className="pointer-events-none absolute -left-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-white/6 blur-3xl" />
-      <div className="pointer-events-none absolute -right-48 -bottom-56 h-[32rem] w-[32rem] rounded-full bg-white/5 blur-3xl" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.10),transparent_55%)]" />
-    </>
-  );
-}
-
-function Pill({
-  children,
-  href,
-  variant = "soft",
-}: {
-  children: React.ReactNode;
-  href?: string;
-  variant?: "soft" | "solid";
-}) {
-  const cls =
-    variant === "solid"
-      ? "inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-950 hover:bg-zinc-100"
-      : "inline-flex items-center rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-xs text-zinc-100 backdrop-blur hover:bg-zinc-900";
-
-  return href ? (
-    <Link href={href} className={cls}>
-      {children}
-    </Link>
-  ) : (
-    <span className={cls}>{children}</span>
-  );
-}
-
-function SectionHeader({
-  title,
-  subtitle,
-  href,
-}: {
-  title: string;
-  subtitle?: string;
-  href?: string;
-}) {
-  return (
-    <div className="flex items-end justify-between gap-4">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-        {subtitle ? <p className="mt-1 text-sm text-zinc-400">{subtitle}</p> : null}
-      </div>
-      {href ? (
-        <Link href={href} className="text-sm text-zinc-300 hover:text-zinc-100">
-          View all →
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-function CategoryBadge({ cat }: { cat: Category | null }) {
-  if (!cat) return null;
-  return (
-    <Link
-      href={`/category/${cat.slug}`}
-      className="absolute left-3 top-3 z-10 rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1 text-xs text-zinc-100 backdrop-blur hover:bg-zinc-900"
-    >
-      {cat.name}
-    </Link>
-  );
-}
-
-function Cover({
-  title,
-  coverUrl,
-  metaLine,
-  cat,
-  aspect,
-  priority,
-}: {
-  title: string;
-  coverUrl: string | null;
-  metaLine: string;
-  cat: Category | null;
-  aspect: "hero" | "card";
-  priority?: boolean;
-}) {
-  const aspectCls = aspect === "hero" ? "aspect-[16/9]" : "aspect-[16/10]";
-
-  return (
-    <div className={`relative w-full ${aspectCls} overflow-hidden bg-zinc-900`}>
-      <CategoryBadge cat={cat} />
-
-      {coverUrl ? (
-        <Image
-          src={coverUrl}
-          alt={title}
-          fill
-          unoptimized
-          priority={priority}
-          sizes={aspect === "hero" ? "(max-width: 1024px) 100vw, 60vw" : "(max-width: 1024px) 100vw, 33vw"}
-          className="object-cover opacity-95 transition duration-300 group-hover:opacity-100 group-hover:scale-[1.02]"
-        />
-      ) : (
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900" />
-          <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
-          <div className="absolute -bottom-28 -right-28 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255,255,255,0.10),transparent_55%)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/10 to-transparent" />
-
-          <div className="relative flex h-full flex-col justify-end p-4">
-            {cat ? <Pill href={`/category/${cat.slug}`}>{cat.name}</Pill> : null}
-            <div className="mt-2 line-clamp-2 text-lg font-semibold text-zinc-100">
-              {title}
-            </div>
-            <div className="mt-1 text-xs text-zinc-400">{metaLine}</div>
-          </div>
-        </div>
-      )}
-
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent" />
-    </div>
-  );
-}
-
-function CardShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className={[
-        "group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/22 transition transform-gpu",
-        "hover:bg-zinc-900/55 hover:border-zinc-700 hover:-translate-y-0.5",
-        "hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_30px_80px_rgba(0,0,0,0.55)]",
-      ].join(" ")}
-    >
-      {children}
-    </div>
-  );
-}
-
-function ArticleCard({
-  a,
-  variant = "card",
-}: {
-  a: Article;
-  variant?: "hero" | "card" | "compact";
-}) {
-  const coverUrl = firstCoverUrl(a);
-  const cat = getArticleCategory(a);
-  const date = formatDate(a.publishedAt);
-  const readTime = estimateReadTime((a.excerpt ?? "") || a.title);
-  const meta = [date, readTime].filter(Boolean).join(" · ");
-
-  if (variant === "compact") {
-    return (
-      <Link href={`/news/${a.slug}`}>
-        <CardShell>
-          <div className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-xs text-zinc-400">{meta}</div>
-                <div className="mt-1 line-clamp-2 text-base font-semibold leading-snug">
-                  {a.title}
-                </div>
-              </div>
-              <span className="shrink-0 text-zinc-500 transition group-hover:translate-x-0.5">
-                →
-              </span>
-            </div>
-          </div>
-        </CardShell>
-      </Link>
-    );
-  }
-
-  const titleCls =
-    variant === "hero"
-      ? "mt-2 line-clamp-2 text-2xl font-semibold leading-snug"
-      : "mt-2 line-clamp-2 text-lg font-semibold leading-snug";
-
-  const pad = variant === "hero" ? "p-6" : "p-4";
-
-  return (
-    <Link href={`/news/${a.slug}`}>
-      <CardShell>
-        <Cover
-          title={a.title}
-          coverUrl={coverUrl}
-          metaLine={meta}
-          cat={cat}
-          aspect={variant === "hero" ? "hero" : "card"}
-          priority={variant === "hero"}
-        />
-        <div className={pad}>
-          <div className="text-xs text-zinc-400">{meta}</div>
-          <div className={titleCls}>{a.title}</div>
-
-          <p className="mt-2 line-clamp-3 text-sm text-zinc-300">
-            {a.excerpt ? a.excerpt : "Open to read the full story."}
-          </p>
-
-          <div className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-200/90">
-            <span className="opacity-90 group-hover:opacity-100">Open</span>
-            <span className="inline-block translate-x-0 transition group-hover:translate-x-1">
-              →
-            </span>
-          </div>
-        </div>
-      </CardShell>
-    </Link>
-  );
-}
+/* -------- UI bits -------- */
 
 function CategoryPill({ cat }: { cat: Category }) {
   return (
@@ -341,7 +127,76 @@ function CategoryPill({ cat }: { cat: Category }) {
   );
 }
 
-/* ---------------- Page ---------------- */
+function MiniListItem({ a }: { a: Article }) {
+  const coverUrl = firstCoverUrl(a);
+  const meta = [formatDate(a.publishedAt), estimateReadTime(a.excerpt ?? a.title)]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <Link
+      href={`/news/${a.slug}`}
+      className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4 hover:bg-zinc-900/45"
+    >
+      <div className="min-w-0">
+        <div className="text-xs text-zinc-400">{meta}</div>
+        <div className="mt-1 font-semibold leading-snug line-clamp-2">{a.title}</div>
+      </div>
+
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-800/60">
+        {coverUrl ? (
+          <img src={coverUrl} alt={a.title} className="h-full w-full object-cover" loading="lazy" />
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
+function DesktopCard({ a }: { a: Article }) {
+  const coverUrl = firstCoverUrl(a);
+  const cat = getArticleCategory(a);
+  const meta = [formatDate(a.publishedAt), estimateReadTime(a.excerpt ?? a.title)]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <Link
+      href={`/news/${a.slug}`}
+      className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/45 transition"
+    >
+      <div className="relative aspect-[16/10] bg-zinc-900">
+        {coverUrl ? (
+          <img src={coverUrl} alt={a.title} className="absolute inset-0 h-full w-full object-cover opacity-95" loading="lazy" />
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900" />
+            <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+            <div className="absolute -bottom-28 -right-28 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
+          </>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
+
+        {cat ? (
+          <span className="absolute left-3 top-3 rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-xs text-zinc-100 backdrop-blur">
+            {cat.name}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="p-4">
+        <div className="text-xs text-zinc-400">{meta}</div>
+        <div className="mt-2 text-lg font-semibold leading-snug line-clamp-2">{a.title}</div>
+        <p className="mt-2 text-sm text-zinc-300 line-clamp-3">{a.excerpt ?? "Open to read the full story."}</p>
+        <div className="mt-4 text-sm text-zinc-200/90">
+          Open <span className="inline-block transition group-hover:translate-x-1">→</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* -------- PAGE -------- */
 
 export default async function HomePage() {
   const baseUrl = process.env.NEXT_PUBLIC_STRAPI_URL;
@@ -351,9 +206,7 @@ export default async function HomePage() {
       <main className="min-h-screen bg-zinc-950 text-zinc-100">
         <div className="mx-auto max-w-6xl px-4 py-10">
           <p className="text-zinc-300">
-            Missing{" "}
-            <code className="rounded bg-zinc-900 px-1">NEXT_PUBLIC_STRAPI_URL</code>{" "}
-            in env vars.
+            Missing <code className="rounded bg-zinc-900 px-1">NEXT_PUBLIC_STRAPI_URL</code>.
           </p>
         </div>
       </main>
@@ -381,21 +234,40 @@ export default async function HomePage() {
     );
   }
 
-  const featured = articles[0] ?? null;
-  const top = articles.slice(featured ? 1 : 0, (featured ? 1 : 0) + 2);
-  const trending = articles.slice((featured ? 1 : 0) + 2, (featured ? 1 : 0) + 10);
-  const latest = articles.slice((featured ? 1 : 0) + 10, (featured ? 1 : 0) + 19);
+  const featured = articles.slice(0, 6);
+  const latest = articles.slice(6, 26);
+
+  const featuredItems: FeaturedItem[] = featured.map((a) => ({
+    id: a.id,
+    title: a.title,
+    slug: a.slug,
+    excerpt: a.excerpt,
+    publishedAt: a.publishedAt,
+    coverUrl: firstCoverUrl(a),
+    category: (() => {
+      const c = getArticleCategory(a);
+      return c ? { name: c.name, slug: c.slug } : null;
+    })(),
+  }));
+
+  const desktopFeatured = featured[0] ?? null;
+  const desktopTop = featured.slice(1, 3);
+  const desktopGrid = articles.slice(3, 12);
+  const desktopLatest = articles.slice(12, 24);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        {/* NAV */}
-        <div className="flex items-center justify-between">
+      <div className="mx-auto max-w-6xl px-4 py-6 lg:py-10">
+        {/* TOP BAR */}
+        <header className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm">
               FP
             </span>
-            <span className="text-sm font-medium text-zinc-200">FullPort</span>
+            <div>
+              <div className="text-sm font-semibold">FullPort</div>
+              <div className="text-xs text-zinc-400">Crypto newsroom</div>
+            </div>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -406,134 +278,167 @@ export default async function HomePage() {
               News
             </Link>
           </div>
-        </div>
+        </header>
 
-        {/* HERO SUPER CARD */}
-        <div className="relative mt-8 overflow-hidden rounded-[2rem] border border-zinc-800 bg-zinc-900/20 p-8 shadow-[0_0_140px_rgba(255,255,255,0.07)]">
-          <GlowBg />
-
-          <div className="relative grid gap-8 lg:grid-cols-12 lg:items-start">
-            {/* Left copy */}
-            <div className="lg:col-span-5">
-              <div className="flex flex-wrap gap-2">
-                <Pill>⚡ Live</Pill>
-                <Pill>🧠 Narratives</Pill>
-                <Pill>📰 Newsroom</Pill>
-              </div>
-
-              <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
-                FullPort
-              </h1>
-              <p className="mt-3 text-zinc-300">
-                Modern crypto news & memecoin culture — curated fast, shipped clean.
-              </p>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/news"
-                  className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-zinc-100"
-                >
-                  Browse Latest
-                </Link>
-                <Link
-                  href="/sitemap.xml"
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
-                >
-                  Sitemap
-                </Link>
-              </div>
-
-              {/* Category pills */}
-              {categories.length ? (
-                <div className="mt-7">
-                  <div className="text-xs text-zinc-500">Browse topics</div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {categories.slice(0, 12).map((c) => (
-                      <CategoryPill key={c.id} cat={c} />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Mini stats strip */}
-              <div className="mt-8 grid grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/25 p-4">
-                  <div className="text-xs text-zinc-500">Updates</div>
-                  <div className="mt-1 text-lg font-semibold text-zinc-100">Daily</div>
-                </div>
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/25 p-4">
-                  <div className="text-xs text-zinc-500">Latency</div>
-                  <div className="mt-1 text-lg font-semibold text-zinc-100">Fast</div>
-                </div>
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/25 p-4">
-                  <div className="text-xs text-zinc-500">Focus</div>
-                  <div className="mt-1 text-lg font-semibold text-zinc-100">Web3</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right content */}
-            <div className="lg:col-span-7">
-              <div className="mb-3 flex items-center gap-2 text-xs text-zinc-400">
-                <span className="rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-zinc-100">
-                  🔥 Featured
-                </span>
-                <span className="text-zinc-500">Fresh from Strapi</span>
-              </div>
-
-              {featured ? <ArticleCard a={featured} variant="hero" /> : null}
-
-              {top.length ? (
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {top.map((a) => (
-                    <ArticleCard key={a.id} a={a} variant="compact" />
-                  ))}
-                </div>
-              ) : null}
-            </div>
+        {/* MOBILE */}
+        <div className="mt-6 lg:hidden">
+          {/* Featured autoplay carousel */}
+          <div className="flex items-end justify-between">
+            <h2 className="text-lg font-semibold">Featured</h2>
+            <Link href="/news" className="text-sm text-zinc-300 hover:text-zinc-100">
+              View all →
+            </Link>
           </div>
-        </div>
 
-        {/* TRENDING */}
-        {trending.length ? (
-          <section className="mt-10">
-            <SectionHeader
-              title="Trending"
-              subtitle="Fast picks people are clicking right now."
-              href="/news"
-            />
+          <div className="mt-4">
+            <FeaturedCarousel items={featuredItems} intervalMs={4500} />
+          </div>
 
-            <div className="mt-5 flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {trending.map((a) => (
-                <div key={a.id} className="min-w-[290px] max-w-[290px]">
-                  <ArticleCard a={a} />
-                </div>
+          {/* Categories */}
+          {categories.length ? (
+            <section className="mt-7">
+              <div className="text-xs text-zinc-500">Topics</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {categories.slice(0, 12).map((c) => (
+                  <CategoryPill key={c.id} cat={c} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {/* Latest list */}
+          <section className="mt-8">
+            <div className="flex items-end justify-between">
+              <h2 className="text-lg font-semibold">Latest</h2>
+              <Link href="/news" className="text-sm text-zinc-300 hover:text-zinc-100">
+                All →
+              </Link>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {latest.map((a) => (
+                <MiniListItem key={a.id} a={a} />
               ))}
             </div>
           </section>
-        ) : null}
 
-        {/* LATEST */}
-        <section className="mt-12">
-          <SectionHeader
-            title="Latest"
-            subtitle="Newest drops from the newsroom."
-            href="/news"
-          />
+          {/* Bottom nav (mobile only) */}
+          <nav className="fixed bottom-4 left-1/2 z-50 w-[92%] -translate-x-1/2">
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 backdrop-blur px-4 py-3 flex items-center justify-around">
+              <Link
+                href="/"
+                className="rounded-2xl bg-white text-zinc-950 px-4 py-2 text-sm font-medium"
+              >
+                Home
+              </Link>
+              <Link href="/news" className="px-4 py-2 text-sm text-zinc-200">
+                News
+              </Link>
+              <Link href="/categories" className="px-4 py-2 text-sm text-zinc-200">
+                Topics
+              </Link>
+              <Link href="/sitemap.xml" className="px-4 py-2 text-sm text-zinc-200">
+                Map
+              </Link>
+            </div>
+          </nav>
 
-          {latest.length === 0 ? (
-            <p className="mt-6 text-zinc-300">No published articles yet.</p>
-          ) : (
-            <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {latest.map((a) => (
-                <ArticleCard key={a.id} a={a} />
+          <div className="h-24" />
+        </div>
+
+        {/* DESKTOP */}
+        <div className="mt-8 hidden lg:grid lg:grid-cols-12 lg:gap-8">
+          {/* Left: featured + top */}
+          <div className="lg:col-span-7">
+            <div className="flex items-end justify-between">
+              <h2 className="text-xl font-semibold">Featured</h2>
+              <Link href="/news" className="text-sm text-zinc-300 hover:text-zinc-100">
+                View all →
+              </Link>
+            </div>
+
+            <div className="mt-4 space-y-6">
+              {desktopFeatured ? (
+                <Link
+                  href={`/news/${desktopFeatured.slug}`}
+                  className="block overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/45 transition"
+                >
+                  <div className="relative aspect-[16/9] bg-zinc-900">
+                    {firstCoverUrl(desktopFeatured) ? (
+                      <img
+                        src={firstCoverUrl(desktopFeatured) as string}
+                        alt={desktopFeatured.title}
+                        className="absolute inset-0 h-full w-full object-cover opacity-95"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900" />
+                        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+                        <div className="absolute -bottom-28 -right-28 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
+                      </>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-zinc-950/10 to-transparent" />
+
+                    <div className="absolute bottom-0 p-6">
+                      <div className="text-xs text-zinc-300/80">
+                        {formatDate(desktopFeatured.publishedAt)} ·{" "}
+                        {estimateReadTime(desktopFeatured.excerpt ?? desktopFeatured.title)}
+                      </div>
+                      <div className="mt-2 text-3xl font-semibold leading-snug">
+                        {desktopFeatured.title}
+                      </div>
+                      <p className="mt-2 text-sm text-zinc-200/90 line-clamp-2">
+                        {desktopFeatured.excerpt ?? "Open to read the full story."}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ) : null}
+
+              <div className="grid grid-cols-2 gap-6">
+                {desktopTop.map((a) => (
+                  <DesktopCard key={a.id} a={a} />
+                ))}
+              </div>
+            </div>
+
+            {/* Grid */}
+            <div className="mt-10">
+              <h3 className="text-lg font-semibold">Trending</h3>
+              <div className="mt-4 grid grid-cols-2 gap-6">
+                {desktopGrid.map((a) => (
+                  <DesktopCard key={a.id} a={a} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: latest list */}
+          <aside className="lg:col-span-5">
+            <h2 className="text-xl font-semibold">Latest</h2>
+            <div className="mt-4 space-y-3">
+              {desktopLatest.map((a) => (
+                <MiniListItem key={a.id} a={a} />
               ))}
             </div>
-          )}
-        </section>
+
+            {/* Topics */}
+            {categories.length ? (
+              <div className="mt-10">
+                <div className="text-sm font-semibold">Topics</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {categories.slice(0, 18).map((c) => (
+                    <CategoryPill key={c.id} cat={c} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </aside>
+        </div>
 
         {/* FOOTER */}
-        <footer className="mt-16 border-t border-zinc-800 pt-8 text-sm text-zinc-400">
+        <footer className="mt-14 border-t border-zinc-800 pt-8 text-sm text-zinc-400">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-zinc-200">FullPort</div>
