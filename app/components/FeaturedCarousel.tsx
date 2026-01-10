@@ -36,14 +36,36 @@ export default function FeaturedCarousel({
   intervalMs?: number;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const scrollThrottleRef = useRef<number | null>(null);
   const isAutoScrollingRef = useRef(false);
+  const scrollThrottleRef = useRef<number | null>(null);
+
+  const timeoutRef = useRef<number | null>(null);
+  const remainingRef = useRef<number>(intervalMs);
+  const startedAtRef = useRef<number>(Date.now());
 
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
   const count = items.length;
   const dots = useMemo(() => Array.from({ length: count }), [count]);
+
+  const clearTimer = () => {
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  const startTimer = (ms: number) => {
+    clearTimer();
+    startedAtRef.current = Date.now();
+    remainingRef.current = ms;
+
+    timeoutRef.current = window.setTimeout(() => {
+      // kad timer istekne -> idući slide
+      setActive((a) => (a + 1) % Math.max(1, count));
+    }, ms);
+  };
 
   const scrollToIndex = (idx: number) => {
     const el = scrollerRef.current;
@@ -55,29 +77,55 @@ export default function FeaturedCarousel({
     isAutoScrollingRef.current = true;
     el.scrollTo({ left: child.offsetLeft, behavior: "smooth" });
 
-    // nakon kratkog vremena pretpostavi da je smooth scroll završio
     window.setTimeout(() => {
       isAutoScrollingRef.current = false;
     }, 650);
   };
 
-  // autoplay: samo setInterval (nema RAF + state spam)
+  // start autoplay timer
   useEffect(() => {
-    if (paused || count <= 1) return;
+    if (count <= 1) return;
+    if (paused) return;
 
-    const t = window.setInterval(() => {
-      setActive((a) => (a + 1) % count);
-    }, intervalMs);
+    // reset timer on mount/unpause
+    startTimer(intervalMs);
 
-    return () => window.clearInterval(t);
+    return () => clearTimer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused, count, intervalMs]);
 
-  // kad se promijeni active, scrollaj
+  // when active changes -> scroll + reset timer (if not paused)
   useEffect(() => {
     scrollToIndex(active);
+
+    if (count <= 1) return;
+    if (paused) return;
+
+    startTimer(intervalMs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  // scroll sync (throttled) – i ignoriraj dok autoplay “gura”
+  // pause / resume with correct remaining time
+  const pause = () => {
+    if (paused) return;
+    setPaused(true);
+
+    // izračunaj koliko je ostalo
+    const elapsed = Date.now() - startedAtRef.current;
+    const remain = Math.max(0, remainingRef.current - elapsed);
+    remainingRef.current = remain;
+    clearTimer();
+  };
+
+  const resume = () => {
+    if (!paused) return;
+    setPaused(false);
+
+    // nastavi od preostalog
+    if (count > 1) startTimer(Math.max(250, remainingRef.current));
+  };
+
+  // sync active from user scroll (throttled)
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -104,7 +152,7 @@ export default function FeaturedCarousel({
     const onScroll = () => {
       if (isAutoScrollingRef.current) return;
 
-      // throttle: max 1 update / 120ms
+      // throttle 1 update / 120ms
       if (scrollThrottleRef.current) return;
       scrollThrottleRef.current = window.setTimeout(() => {
         scrollThrottleRef.current = null;
@@ -124,12 +172,12 @@ export default function FeaturedCarousel({
   return (
     <section
       className="relative"
-      onPointerDown={() => setPaused(true)}
-      onPointerUp={() => setPaused(false)}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onTouchStart={() => setPaused(true)}
-      onTouchEnd={() => setPaused(false)}
+      onPointerDown={pause}
+      onPointerUp={resume}
+      onMouseEnter={pause}
+      onMouseLeave={resume}
+      onTouchStart={pause}
+      onTouchEnd={resume}
     >
       <div
         ref={scrollerRef}
@@ -196,12 +244,12 @@ export default function FeaturedCarousel({
         })}
       </div>
 
-      {/* CSS progress (bez RAF), resetira se kad se active promijeni */}
+      {/* CSS progress bar: restart on active change, stop when paused */}
       {count > 1 ? (
         <div className="mt-3 flex items-center gap-3">
           <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-800/70">
             <div
-              key={`${active}-${paused ? "p" : "r"}`} // reset animacije
+              key={`${active}-${paused ? "p" : "r"}`}
               className="absolute left-0 top-0 h-full rounded-full bg-zinc-100 origin-left"
               style={{
                 animation: paused ? "none" : `fpProgress ${intervalMs}ms linear forwards`,
@@ -215,7 +263,9 @@ export default function FeaturedCarousel({
               <button
                 key={i}
                 aria-label={`Go to slide ${i + 1}`}
-                onClick={() => setActive(i)}
+                onClick={() => {
+                  setActive(i);
+                }}
                 className={[
                   "h-2 w-2 rounded-full transition",
                   i === active ? "bg-zinc-100" : "bg-zinc-700 hover:bg-zinc-600",
