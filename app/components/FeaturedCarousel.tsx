@@ -62,7 +62,6 @@ export default function FeaturedCarousel({
     remainingRef.current = ms;
 
     timeoutRef.current = window.setTimeout(() => {
-      // kad timer istekne -> idući slide
       setActive((a) => (a + 1) % Math.max(1, count));
     }, ms);
   };
@@ -82,19 +81,15 @@ export default function FeaturedCarousel({
     }, 650);
   };
 
-  // start autoplay timer
   useEffect(() => {
     if (count <= 1) return;
     if (paused) return;
 
-    // reset timer on mount/unpause
     startTimer(intervalMs);
-
     return () => clearTimer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused, count, intervalMs]);
 
-  // when active changes -> scroll + reset timer (if not paused)
   useEffect(() => {
     scrollToIndex(active);
 
@@ -105,12 +100,10 @@ export default function FeaturedCarousel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  // pause / resume with correct remaining time
   const pause = () => {
     if (paused) return;
     setPaused(true);
 
-    // izračunaj koliko je ostalo
     const elapsed = Date.now() - startedAtRef.current;
     const remain = Math.max(0, remainingRef.current - elapsed);
     remainingRef.current = remain;
@@ -121,11 +114,9 @@ export default function FeaturedCarousel({
     if (!paused) return;
     setPaused(false);
 
-    // nastavi od preostalog
     if (count > 1) startTimer(Math.max(250, remainingRef.current));
   };
 
-  // sync active from user scroll (throttled)
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -152,7 +143,6 @@ export default function FeaturedCarousel({
     const onScroll = () => {
       if (isAutoScrollingRef.current) return;
 
-      // throttle 1 update / 120ms
       if (scrollThrottleRef.current) return;
       scrollThrottleRef.current = window.setTimeout(() => {
         scrollThrottleRef.current = null;
@@ -196,7 +186,6 @@ export default function FeaturedCarousel({
               href={`/news/${a.slug}`}
               className="snap-center min-w-[88%] sm:min-w-[78%] lg:min-w-[56%]
                          overflow-hidden rounded-[2rem] border border-zinc-800 bg-zinc-900/20"
-              style={{ willChange: "transform" }}
             >
               <div className="relative aspect-[16/10] bg-zinc-900">
                 {a.coverUrl ? (
@@ -244,17 +233,21 @@ export default function FeaturedCarousel({
         })}
       </div>
 
-      {/* CSS progress bar: restart on active change, stop when paused */}
       {count > 1 ? (
         <div className="mt-3 flex items-center gap-3">
           <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-800/70">
             <div
               key={`${active}-${paused ? "p" : "r"}`}
-              className="absolute left-0 top-0 h-full rounded-full bg-zinc-100 origin-left"
-              style={{
-                animation: paused ? "none" : `fpProgress ${intervalMs}ms linear forwards`,
-                transform: "scaleX(0)",
-              }}
+              className={[
+                "absolute left-0 top-0 h-full rounded-full bg-zinc-100 origin-left",
+                paused ? "" : "animate-[fpProgress_var(--fpDur)_linear_forwards]",
+              ].join(" ")}
+              style={
+                {
+                  "--fpDur": `${intervalMs}ms`,
+                  transform: "scaleX(0)",
+                } as React.CSSProperties
+              }
             />
           </div>
 
@@ -263,9 +256,7 @@ export default function FeaturedCarousel({
               <button
                 key={i}
                 aria-label={`Go to slide ${i + 1}`}
-                onClick={() => {
-                  setActive(i);
-                }}
+                onClick={() => setActive(i)}
                 className={[
                   "h-2 w-2 rounded-full transition",
                   i === active ? "bg-zinc-100" : "bg-zinc-700 hover:bg-zinc-600",
@@ -273,19 +264,16 @@ export default function FeaturedCarousel({
               />
             ))}
           </div>
+
+          {/* keyframes via <style> in markup is OK, but let's keep it minimal */}
+          <style>{`
+            @keyframes fpProgress {
+              from { transform: scaleX(0); }
+              to { transform: scaleX(1); }
+            }
+          `}</style>
         </div>
       ) : null}
-
-      <style jsx global>{`
-        @keyframes fpProgress {
-          from {
-            transform: scaleX(0);
-          }
-          to {
-            transform: scaleX(1);
-          }
-        }
-      `}</style>
     </section>
   );
 }
