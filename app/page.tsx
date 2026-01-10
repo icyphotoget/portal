@@ -1,7 +1,7 @@
 // app/page.tsx
-import path from "path";
 import Link from "next/link";
 import FeaturedCarousel, { type FeaturedItem } from "./components/FeaturedCarousel";
+import BottomNav from "./components/BottomNav";
 
 type StrapiMedia = any;
 
@@ -23,6 +23,8 @@ type Article = {
   coverImage?: StrapiMedia;
   category?: Category | null;
 };
+
+/* ----------------- Strapi URL helpers ----------------- */
 
 function absolutizeStrapiUrl(maybeRelativeUrl: string | null | undefined) {
   if (!maybeRelativeUrl) return null;
@@ -77,13 +79,17 @@ function estimateReadTime(text: string) {
 }
 
 function getArticleCategory(a: any): Category | null {
+  // Strapi v5: category object directly
   if (a?.category && typeof a.category === "object") return a.category as Category;
 
+  // v4 fallback: category.data.attributes
   const v4 = a?.category?.data?.attributes;
   if (v4?.name && v4?.slug) return { id: a.category.data.id ?? 0, ...v4 } as Category;
 
   return null;
 }
+
+/* ----------------- Fetch ----------------- */
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { next: { revalidate: 60 } });
@@ -98,7 +104,7 @@ async function fetchHomeData(baseUrl: string) {
   const articlesUrl =
     `${baseUrl}/api/articles?sort=publishedAt:desc` +
     `&populate=coverImage&populate=category` +
-    `&pagination[pageSize]=30`;
+    `&pagination[pageSize]=40`;
 
   const categoriesUrl =
     `${baseUrl}/api/categories?sort=name:asc&pagination[pageSize]=50`;
@@ -114,7 +120,29 @@ async function fetchHomeData(baseUrl: string) {
   };
 }
 
-/* -------- UI bits -------- */
+/* ----------------- UI helpers ----------------- */
+
+function Glow() {
+  return (
+    <>
+      <div className="pointer-events-none absolute -left-40 -top-40 h-[30rem] w-[30rem] rounded-full bg-white/6 blur-3xl" />
+      <div className="pointer-events-none absolute -right-48 -bottom-56 h-[34rem] w-[34rem] rounded-full bg-white/5 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.12),transparent_55%)]" />
+    </>
+  );
+}
+
+function Pill({ children, href }: { children: React.ReactNode; href?: string }) {
+  const cls =
+    "inline-flex items-center rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-xs text-zinc-100 backdrop-blur hover:bg-zinc-900";
+  return href ? (
+    <Link href={href} className={cls}>
+      {children}
+    </Link>
+  ) : (
+    <span className={cls}>{children}</span>
+  );
+}
 
 function CategoryPill({ cat }: { cat: Category }) {
   return (
@@ -127,7 +155,7 @@ function CategoryPill({ cat }: { cat: Category }) {
   );
 }
 
-function MiniListItem({ a }: { a: Article }) {
+function ListItem({ a }: { a: Article }) {
   const coverUrl = firstCoverUrl(a);
   const meta = [formatDate(a.publishedAt), estimateReadTime(a.excerpt ?? a.title)]
     .filter(Boolean)
@@ -136,14 +164,14 @@ function MiniListItem({ a }: { a: Article }) {
   return (
     <Link
       href={`/news/${a.slug}`}
-      className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4 hover:bg-zinc-900/45"
+      className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-zinc-800 bg-zinc-900/20 p-4 hover:bg-zinc-900/45 transition"
     >
       <div className="min-w-0">
         <div className="text-xs text-zinc-400">{meta}</div>
         <div className="mt-1 font-semibold leading-snug line-clamp-2">{a.title}</div>
       </div>
 
-      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-800/60">
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-zinc-800/60">
         {coverUrl ? (
           <img src={coverUrl} alt={a.title} className="h-full w-full object-cover" loading="lazy" />
         ) : null}
@@ -152,7 +180,7 @@ function MiniListItem({ a }: { a: Article }) {
   );
 }
 
-function DesktopCard({ a }: { a: Article }) {
+function GridCard({ a }: { a: Article }) {
   const coverUrl = firstCoverUrl(a);
   const cat = getArticleCategory(a);
   const meta = [formatDate(a.publishedAt), estimateReadTime(a.excerpt ?? a.title)]
@@ -162,21 +190,25 @@ function DesktopCard({ a }: { a: Article }) {
   return (
     <Link
       href={`/news/${a.slug}`}
-      className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/45 transition"
+      className="group overflow-hidden rounded-[1.6rem] border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/45 transition
+                 hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_30px_90px_rgba(0,0,0,0.55)]"
     >
       <div className="relative aspect-[16/10] bg-zinc-900">
         {coverUrl ? (
-          <img src={coverUrl} alt={a.title} className="absolute inset-0 h-full w-full object-cover opacity-95" loading="lazy" />
+          <img
+            src={coverUrl}
+            alt={a.title}
+            className="absolute inset-0 h-full w-full object-cover opacity-95 transition duration-300 group-hover:scale-[1.02]"
+            loading="lazy"
+          />
         ) : (
           <>
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900" />
-            <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+            <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/6 blur-3xl" />
             <div className="absolute -bottom-28 -right-28 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
           </>
         )}
-
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
-
         {cat ? (
           <span className="absolute left-3 top-3 rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-xs text-zinc-100 backdrop-blur">
             {cat.name}
@@ -189,14 +221,14 @@ function DesktopCard({ a }: { a: Article }) {
         <div className="mt-2 text-lg font-semibold leading-snug line-clamp-2">{a.title}</div>
         <p className="mt-2 text-sm text-zinc-300 line-clamp-3">{a.excerpt ?? "Open to read the full story."}</p>
         <div className="mt-4 text-sm text-zinc-200/90">
-          Open <span className="inline-block transition group-hover:translate-x-1">→</span>
+          Open <span className="inline-block translate-x-0 transition group-hover:translate-x-1">→</span>
         </div>
       </div>
     </Link>
   );
 }
 
-/* -------- PAGE -------- */
+/* ----------------- Page ----------------- */
 
 export default async function HomePage() {
   const baseUrl = process.env.NEXT_PUBLIC_STRAPI_URL;
@@ -206,7 +238,8 @@ export default async function HomePage() {
       <main className="min-h-screen bg-zinc-950 text-zinc-100">
         <div className="mx-auto max-w-6xl px-4 py-10">
           <p className="text-zinc-300">
-            Missing <code className="rounded bg-zinc-900 px-1">NEXT_PUBLIC_STRAPI_URL</code>.
+            Missing{" "}
+            <code className="rounded bg-zinc-900 px-1">NEXT_PUBLIC_STRAPI_URL</code>.
           </p>
         </div>
       </main>
@@ -250,15 +283,16 @@ export default async function HomePage() {
     })(),
   }));
 
-  const desktopFeatured = featured[0] ?? null;
-  const desktopTop = featured.slice(1, 3);
-  const desktopGrid = articles.slice(3, 12);
-  const desktopLatest = articles.slice(12, 24);
+  const desktopHero = articles[0] ?? null;
+  const desktopTop = articles.slice(1, 4);
+  const desktopTrending = articles.slice(4, 10);
+  const desktopGrid = articles.slice(10, 22);
+  const desktopSidebarLatest = articles.slice(22, 34);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto max-w-6xl px-4 py-6 lg:py-10">
-        {/* TOP BAR */}
+        {/* Top bar */}
         <header className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/40 text-sm">
@@ -266,7 +300,7 @@ export default async function HomePage() {
             </span>
             <div>
               <div className="text-sm font-semibold">FullPort</div>
-              <div className="text-xs text-zinc-400">Crypto newsroom</div>
+              <div className="text-xs text-zinc-400">2026 newsroom</div>
             </div>
           </Link>
 
@@ -277,24 +311,46 @@ export default async function HomePage() {
             >
               News
             </Link>
+            <Link
+              href="/sitemap.xml"
+              className="hidden sm:inline-flex rounded-xl border border-zinc-800 bg-zinc-900/25 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+            >
+              Sitemap
+            </Link>
           </div>
         </header>
 
-        {/* MOBILE */}
+        {/* MOBILE: app-like */}
         <div className="mt-6 lg:hidden">
-          {/* Featured autoplay carousel */}
-          <div className="flex items-end justify-between">
-            <h2 className="text-lg font-semibold">Featured</h2>
-            <Link href="/news" className="text-sm text-zinc-300 hover:text-zinc-100">
-              View all →
-            </Link>
+          <div className="relative overflow-hidden rounded-[2rem] border border-zinc-800 bg-zinc-900/15 p-5 shadow-[0_0_140px_rgba(255,255,255,0.06)]">
+            <Glow />
+            <div className="relative">
+              <div className="flex flex-wrap gap-2">
+                <Pill>⚡ Live</Pill>
+                <Pill>🧠 Narratives</Pill>
+                <Pill href="/news">📰 Feed</Pill>
+              </div>
+
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight">FullPort</h1>
+              <p className="mt-2 text-zinc-300">
+                Clean crypto news with a modern, mobile-first feel.
+              </p>
+
+              <div className="mt-5">
+                <div className="flex items-end justify-between">
+                  <h2 className="text-lg font-semibold">Featured</h2>
+                  <Link href="/news" className="text-sm text-zinc-300 hover:text-zinc-100">
+                    View all →
+                  </Link>
+                </div>
+
+                <div className="mt-4">
+                  <FeaturedCarousel items={featuredItems} intervalMs={5200} />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-4">
-            <FeaturedCarousel items={featuredItems} intervalMs={4500} />
-          </div>
-
-          {/* Categories */}
           {categories.length ? (
             <section className="mt-7">
               <div className="text-xs text-zinc-500">Topics</div>
@@ -306,7 +362,6 @@ export default async function HomePage() {
             </section>
           ) : null}
 
-          {/* Latest list */}
           <section className="mt-8">
             <div className="flex items-end justify-between">
               <h2 className="text-lg font-semibold">Latest</h2>
@@ -317,127 +372,136 @@ export default async function HomePage() {
 
             <div className="mt-4 space-y-3">
               {latest.map((a) => (
-                <MiniListItem key={a.id} a={a} />
+                <ListItem key={a.id} a={a} />
               ))}
             </div>
           </section>
 
-          {/* Bottom nav (mobile only) */}
-          <nav className="fixed bottom-4 left-1/2 z-50 w-[92%] -translate-x-1/2">
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 backdrop-blur px-4 py-3 flex items-center justify-around">
-              <Link
-                href="/"
-                className="rounded-2xl bg-white text-zinc-950 px-4 py-2 text-sm font-medium"
-              >
-                Home
-              </Link>
-              <Link href="/news" className="px-4 py-2 text-sm text-zinc-200">
-                News
-              </Link>
-              <Link href="/categories" className="px-4 py-2 text-sm text-zinc-200">
-                Topics
-              </Link>
-              <Link href="/sitemap.xml" className="px-4 py-2 text-sm text-zinc-200">
-                Map
-              </Link>
-            </div>
-          </nav>
-
-          <div className="h-24" />
+          <BottomNav />
         </div>
 
-        {/* DESKTOP */}
+        {/* DESKTOP: editorial dashboard */}
         <div className="mt-8 hidden lg:grid lg:grid-cols-12 lg:gap-8">
-          {/* Left: featured + top */}
-          <div className="lg:col-span-7">
-            <div className="flex items-end justify-between">
-              <h2 className="text-xl font-semibold">Featured</h2>
-              <Link href="/news" className="text-sm text-zinc-300 hover:text-zinc-100">
-                View all →
-              </Link>
-            </div>
+          {/* Left */}
+          <div className="lg:col-span-8">
+            {/* Hero */}
+            {desktopHero ? (
+              <Link
+                href={`/news/${desktopHero.slug}`}
+                className="group relative block overflow-hidden rounded-[2rem] border border-zinc-800 bg-zinc-900/15
+                           shadow-[0_0_160px_rgba(255,255,255,0.06)]"
+              >
+                <div className="relative aspect-[16/9] bg-zinc-900">
+                  {firstCoverUrl(desktopHero) ? (
+                    <img
+                      src={firstCoverUrl(desktopHero) as string}
+                      alt={desktopHero.title}
+                      className="absolute inset-0 h-full w-full object-cover opacity-95 transition duration-300 group-hover:scale-[1.02]"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900" />
+                      <div className="absolute -left-40 -top-40 h-[30rem] w-[30rem] rounded-full bg-white/6 blur-3xl" />
+                      <div className="absolute -right-48 -bottom-56 h-[34rem] w-[34rem] rounded-full bg-white/5 blur-3xl" />
+                    </>
+                  )}
 
-            <div className="mt-4 space-y-6">
-              {desktopFeatured ? (
-                <Link
-                  href={`/news/${desktopFeatured.slug}`}
-                  className="block overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/45 transition"
-                >
-                  <div className="relative aspect-[16/9] bg-zinc-900">
-                    {firstCoverUrl(desktopFeatured) ? (
-                      <img
-                        src={firstCoverUrl(desktopFeatured) as string}
-                        alt={desktopFeatured.title}
-                        className="absolute inset-0 h-full w-full object-cover opacity-95"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900" />
-                        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
-                        <div className="absolute -bottom-28 -right-28 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
-                      </>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-zinc-950/10 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-zinc-950/15 to-transparent" />
 
-                    <div className="absolute bottom-0 p-6">
-                      <div className="text-xs text-zinc-300/80">
-                        {formatDate(desktopFeatured.publishedAt)} ·{" "}
-                        {estimateReadTime(desktopFeatured.excerpt ?? desktopFeatured.title)}
-                      </div>
-                      <div className="mt-2 text-3xl font-semibold leading-snug">
-                        {desktopFeatured.title}
-                      </div>
-                      <p className="mt-2 text-sm text-zinc-200/90 line-clamp-2">
-                        {desktopFeatured.excerpt ?? "Open to read the full story."}
-                      </p>
+                  <div className="absolute bottom-0 p-7">
+                    <div className="text-xs text-zinc-300/80">
+                      {formatDate(desktopHero.publishedAt)} ·{" "}
+                      {estimateReadTime(desktopHero.excerpt ?? desktopHero.title)}
+                    </div>
+                    <div className="mt-2 text-4xl font-semibold leading-tight">
+                      {desktopHero.title}
+                    </div>
+                    <p className="mt-3 max-w-2xl text-sm text-zinc-200/90 line-clamp-2">
+                      {desktopHero.excerpt ?? "Open to read the full story."}
+                    </p>
+                    <div className="mt-5 inline-flex items-center gap-2 text-sm text-zinc-200/90">
+                      <span>Open</span>
+                      <span className="inline-block translate-x-0 transition group-hover:translate-x-1">→</span>
                     </div>
                   </div>
-                </Link>
-              ) : null}
+                </div>
+              </Link>
+            ) : null}
 
-              <div className="grid grid-cols-2 gap-6">
+            {/* Top stories */}
+            <div className="mt-8">
+              <div className="flex items-end justify-between">
+                <h2 className="text-xl font-semibold">Top stories</h2>
+                <Link href="/news" className="text-sm text-zinc-300 hover:text-zinc-100">
+                  View all →
+                </Link>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-6">
                 {desktopTop.map((a) => (
-                  <DesktopCard key={a.id} a={a} />
+                  <GridCard key={a.id} a={a} />
                 ))}
               </div>
             </div>
 
-            {/* Grid */}
+            {/* Trending shelf */}
             <div className="mt-10">
-              <h3 className="text-lg font-semibold">Trending</h3>
-              <div className="mt-4 grid grid-cols-2 gap-6">
+              <h2 className="text-xl font-semibold">Trending</h2>
+              <div className="mt-4 flex gap-4 overflow-x-auto pb-2
+                              [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {desktopTrending.map((a) => (
+                  <div key={a.id} className="min-w-[320px] max-w-[320px]">
+                    <GridCard a={a} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Latest grid */}
+            <div className="mt-10">
+              <h2 className="text-xl font-semibold">Latest</h2>
+              <div className="mt-4 grid grid-cols-3 gap-6">
                 {desktopGrid.map((a) => (
-                  <DesktopCard key={a.id} a={a} />
+                  <GridCard key={a.id} a={a} />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Right: latest list */}
-          <aside className="lg:col-span-5">
-            <h2 className="text-xl font-semibold">Latest</h2>
-            <div className="mt-4 space-y-3">
-              {desktopLatest.map((a) => (
-                <MiniListItem key={a.id} a={a} />
-              ))}
-            </div>
+          {/* Sidebar */}
+          <aside className="lg:col-span-4">
+            <div className="sticky top-8 space-y-8">
+              <div className="rounded-[1.6rem] border border-zinc-800 bg-zinc-900/15 p-5">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold">Latest updates</div>
+                  <Link href="/news" className="text-sm text-zinc-300 hover:text-zinc-100">
+                    All →
+                  </Link>
+                </div>
 
-            {/* Topics */}
-            {categories.length ? (
-              <div className="mt-10">
-                <div className="text-sm font-semibold">Topics</div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {categories.slice(0, 18).map((c) => (
-                    <CategoryPill key={c.id} cat={c} />
+                <div className="mt-4 space-y-3">
+                  {desktopSidebarLatest.map((a) => (
+                    <ListItem key={a.id} a={a} />
                   ))}
                 </div>
               </div>
-            ) : null}
+
+              {categories.length ? (
+                <div className="rounded-[1.6rem] border border-zinc-800 bg-zinc-900/15 p-5">
+                  <div className="text-sm font-semibold">Topics</div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {categories.slice(0, 22).map((c) => (
+                      <CategoryPill key={c.id} cat={c} />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </aside>
         </div>
 
-        {/* FOOTER */}
+        {/* Footer */}
         <footer className="mt-14 border-t border-zinc-800 pt-8 text-sm text-zinc-400">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -445,12 +509,8 @@ export default async function HomePage() {
               <div className="mt-1">Independent crypto news & narratives.</div>
             </div>
             <div className="flex gap-4">
-              <Link href="/news" className="hover:text-zinc-200">
-                News
-              </Link>
-              <Link href="/sitemap.xml" className="hover:text-zinc-200">
-                Sitemap
-              </Link>
+              <Link href="/news" className="hover:text-zinc-200">News</Link>
+              <Link href="/sitemap.xml" className="hover:text-zinc-200">Sitemap</Link>
             </div>
           </div>
           <div className="mt-6 text-xs">© {new Date().getFullYear()} FullPort</div>
