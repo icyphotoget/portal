@@ -452,6 +452,7 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
     editorsPick: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     editorsPickRank: Schema.Attribute.Integer;
     excerpt: Schema.Attribute.String;
+    liveUpdate: Schema.Attribute.Text;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
