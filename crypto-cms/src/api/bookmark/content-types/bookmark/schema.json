@@ -10,10 +10,9 @@
     "draftAndPublish": false
   },
   "attributes": {
-    "user": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+    "supabase_user_id": {
+      "type": "string",
+      "required": true
     },
     "article": {
       "type": "relation",
