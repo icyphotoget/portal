@@ -1,3 +1,5 @@
+// config/middlewares.ts
+
 export default [
   // Logger & errors
   "strapi::logger",
@@ -17,25 +19,38 @@ export default [
             "blob:",
             "https://*.r2.cloudflarestorage.com",
             "https://cdn.fullportlabs.com",
+            "https://portal-production-2544.up.railway.app",
           ],
           "media-src": [
             "'self'",
             "data:",
             "blob:",
             "https://cdn.fullportlabs.com",
+            "https://portal-production-2544.up.railway.app",
+          ],
+          "connect-src": [
+            "'self'",
+            "https://portal-production-2544.up.railway.app",
+            "https://*.supabase.co",
+            "wss://*.supabase.co",
           ],
         },
       },
     },
   },
 
-  // ✅ CORS – OBAVEZNO za Supabase JWT header
+  // ✅ CORS – PRODUKCIJA + LOKAL
   {
     name: "strapi::cors",
     config: {
       origin: [
+        // local
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+
+        // production frontend
+        "https://fullportlabs.com",
+        "https://www.fullportlabs.com",
       ],
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       headers: [
