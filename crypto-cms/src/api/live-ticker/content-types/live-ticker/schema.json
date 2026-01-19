@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "live_tickers",
+  "info": {
+    "singularName": "live-ticker",
+    "pluralName": "live-tickers",
+    "displayName": "Live Ticker",
+    "description": "Standalone live updates for the LiveBar ticker."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "text": {
+      "type": "text",
+      "required": true
+    },
+    "label": {
+      "type": "string",
+      "default": "LIVE"
+    },
+    "href": {
+      "type": "string"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "priority": {
+      "type": "integer",
+      "default": 100,
+      "min": 0
+    },
+    "expiresAt": {
+      "type": "datetime"
+    }
+  }
+}

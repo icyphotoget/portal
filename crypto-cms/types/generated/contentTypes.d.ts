@@ -527,6 +527,165 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCuratedListItemCuratedListItem
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'curated_list_items';
+  info: {
+    displayName: 'Curated List Item';
+    pluralName: 'curated-list-items';
+    singularName: 'curated-list-item';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    list: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::curated-list.curated-list'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::curated-list-item.curated-list-item'
+    > &
+      Schema.Attribute.Private;
+    note: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    rank: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<100>;
+    token: Schema.Attribute.Relation<'manyToOne', 'api::token.token'> &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCuratedListCuratedList extends Struct.CollectionTypeSchema {
+  collectionName: 'curated_lists';
+  info: {
+    displayName: 'Curated List';
+    pluralName: 'curated-lists';
+    singularName: 'curated-list';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.RichText;
+    isPremium: Schema.Attribute.Boolean;
+    items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::curated-list-item.curated-list-item'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::curated-list.curated-list'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiLiveTickerLiveTicker extends Struct.CollectionTypeSchema {
+  collectionName: 'live_tickers';
+  info: {
+    description: 'Standalone live updates for the LiveBar ticker.';
+    displayName: 'Live Ticker';
+    pluralName: 'live-tickers';
+    singularName: 'live-ticker';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    expiresAt: Schema.Attribute.DateTime;
+    href: Schema.Attribute.String;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    label: Schema.Attribute.String & Schema.Attribute.DefaultTo<'LIVE'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::live-ticker.live-ticker'
+    > &
+      Schema.Attribute.Private;
+    priority: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<100>;
+    publishedAt: Schema.Attribute.DateTime;
+    text: Schema.Attribute.Text & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiTokenToken extends Struct.CollectionTypeSchema {
+  collectionName: 'tokens';
+  info: {
+    displayName: 'Token';
+    pluralName: 'tokens';
+    singularName: 'token';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    chain: Schema.Attribute.Enumeration<['solana']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'solana'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    descriptionShort: Schema.Attribute.Text;
+    launchpad: Schema.Attribute.Enumeration<
+      ['pumpfun', 'letsbonk', 'bags', 'other']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'other'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::token.token'> &
+      Schema.Attribute.Private;
+    logo: Schema.Attribute.Media;
+    meta: Schema.Attribute.Enumeration<['meme', 'ai', 'other']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'other'>;
+    mint: Schema.Attribute.String & Schema.Attribute.Unique;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    symbol: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    telegram: Schema.Attribute.String;
+    twitter: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    website: Schema.Attribute.String;
+  };
+}
+
 export interface PluginContentReleasesRelease
   extends Struct.CollectionTypeSchema {
   collectionName: 'strapi_releases';
@@ -1040,6 +1199,10 @@ declare module '@strapi/strapi' {
       'api::article.article': ApiArticleArticle;
       'api::bookmark.bookmark': ApiBookmarkBookmark;
       'api::category.category': ApiCategoryCategory;
+      'api::curated-list-item.curated-list-item': ApiCuratedListItemCuratedListItem;
+      'api::curated-list.curated-list': ApiCuratedListCuratedList;
+      'api::live-ticker.live-ticker': ApiLiveTickerLiveTicker;
+      'api::token.token': ApiTokenToken;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;
