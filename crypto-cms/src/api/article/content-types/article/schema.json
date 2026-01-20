@@ -47,6 +47,9 @@
     },
     "liveUpdate": {
       "type": "text"
+    },
+    "videoUrl": {
+      "type": "string"
     }
   }
 }
