@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "curated_list_items",
+  "info": {
+    "singularName": "curated-list-item",
+    "pluralName": "curated-list-items",
+    "displayName": "Curated List Item"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "rank": {
+      "type": "integer",
+      "required": true,
+      "default": 100
+    },
+    "note": {
+      "type": "text"
+    },
+    "list": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::curated-list.curated-list",
+      "inversedBy": "items"
+    },
+    "token": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::token.token",
+      "required": true
+    }
+  }
+}

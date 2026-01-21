@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "curated_lists",
+  "info": {
+    "singularName": "curated-list",
+    "pluralName": "curated-lists",
+    "displayName": "Curated List"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::curated-list-item.curated-list-item",
+      "mappedBy": "list"
+    },
+    "isPremium": {
+      "type": "boolean"
+    }
+  }
+}

@@ -642,6 +642,44 @@ export interface ApiLiveTickerLiveTicker extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiRatingRating extends Struct.CollectionTypeSchema {
+  collectionName: 'ratings';
+  info: {
+    displayName: 'rating';
+    pluralName: 'ratings';
+    singularName: 'rating';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    ipHash: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::rating.rating'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    token: Schema.Attribute.Relation<'manyToOne', 'api::token.token'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    value: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 5;
+          min: 1;
+        },
+        number
+      >;
+  };
+}
+
 export interface ApiTokenToken extends Struct.CollectionTypeSchema {
   collectionName: 'tokens';
   info: {
@@ -675,6 +713,7 @@ export interface ApiTokenToken extends Struct.CollectionTypeSchema {
     mint: Schema.Attribute.String & Schema.Attribute.Unique;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    ratings: Schema.Attribute.Relation<'oneToMany', 'api::rating.rating'>;
     symbol: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
@@ -1203,6 +1242,7 @@ declare module '@strapi/strapi' {
       'api::curated-list-item.curated-list-item': ApiCuratedListItemCuratedListItem;
       'api::curated-list.curated-list': ApiCuratedListCuratedList;
       'api::live-ticker.live-ticker': ApiLiveTickerLiveTicker;
+      'api::rating.rating': ApiRatingRating;
       'api::token.token': ApiTokenToken;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

@@ -1,0 +1,80 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tokens",
+  "info": {
+    "singularName": "token",
+    "pluralName": "tokens",
+    "displayName": "Token"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "symbol": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "mint": {
+      "type": "string",
+      "unique": true
+    },
+    "chain": {
+      "type": "enumeration",
+      "required": true,
+      "default": "solana",
+      "enum": [
+        "solana"
+      ]
+    },
+    "launchpad": {
+      "type": "enumeration",
+      "required": true,
+      "default": "other",
+      "enum": [
+        "pumpfun",
+        "letsbonk",
+        "bags",
+        "other"
+      ]
+    },
+    "meta": {
+      "type": "enumeration",
+      "required": true,
+      "default": "other",
+      "enum": [
+        "meme",
+        "ai",
+        "other"
+      ]
+    },
+    "descriptionShort": {
+      "type": "text"
+    },
+    "website": {
+      "type": "string"
+    },
+    "twitter": {
+      "type": "string"
+    },
+    "telegram": {
+      "type": "string"
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "required": false
+    },
+    "ratings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::rating.rating",
+      "mappedBy": "token"
+    }
+  }
+}
