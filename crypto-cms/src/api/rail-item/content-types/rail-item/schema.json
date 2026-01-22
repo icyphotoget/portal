@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "rail_items",
+  "info": {
+    "singularName": "rail-item",
+    "pluralName": "rail-items",
+    "displayName": "rail-item"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "rank": {
+      "type": "integer"
+    },
+    "taglineOverride": {
+      "type": "string"
+    },
+    "rail": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::rail.rail"
+    },
+    "token": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::token.token"
+    }
+  }
+}

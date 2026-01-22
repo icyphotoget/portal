@@ -642,6 +642,68 @@ export interface ApiLiveTickerLiveTicker extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiRailItemRailItem extends Struct.CollectionTypeSchema {
+  collectionName: 'rail_items';
+  info: {
+    displayName: 'rail-item';
+    pluralName: 'rail-items';
+    singularName: 'rail-item';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::rail-item.rail-item'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    rail: Schema.Attribute.Relation<'oneToOne', 'api::rail.rail'>;
+    rank: Schema.Attribute.Integer;
+    taglineOverride: Schema.Attribute.String;
+    token: Schema.Attribute.Relation<'oneToOne', 'api::token.token'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiRailRail extends Struct.CollectionTypeSchema {
+  collectionName: 'rails';
+  info: {
+    displayName: 'rail';
+    pluralName: 'rails';
+    singularName: 'rail';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.String;
+    items: Schema.Attribute.Relation<'oneToMany', 'api::rail-item.rail-item'>;
+    kind: Schema.Attribute.Enumeration<
+      ['featured', 'trending', 'top_picks', 'new_notable']
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::rail.rail'> &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID;
+    title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiRatingRating extends Struct.CollectionTypeSchema {
   collectionName: 'ratings';
   info: {
@@ -1242,6 +1304,8 @@ declare module '@strapi/strapi' {
       'api::curated-list-item.curated-list-item': ApiCuratedListItemCuratedListItem;
       'api::curated-list.curated-list': ApiCuratedListCuratedList;
       'api::live-ticker.live-ticker': ApiLiveTickerLiveTicker;
+      'api::rail-item.rail-item': ApiRailItemRailItem;
+      'api::rail.rail': ApiRailRail;
       'api::rating.rating': ApiRatingRating;
       'api::token.token': ApiTokenToken;
       'plugin::content-releases.release': PluginContentReleasesRelease;
